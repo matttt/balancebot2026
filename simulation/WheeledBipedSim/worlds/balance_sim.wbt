@@ -1,0 +1,363 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+
+WorldInfo {
+  basicTimeStep 4
+  contactProperties [
+    ContactProperties {
+      coulombFriction [
+        5
+      ]
+    }
+  ]
+}
+Viewpoint {
+  orientation -0.1719039759041731 -0.08024547541074174 0.981839949658009 3.9460606729823677
+  position 4.99021566088394 5.052770915122446 2.7068017563166347
+}
+TexturedBackground {
+  texture "dusk"
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 5 6
+}
+Robot {
+  children [
+    Solid {
+      translation 0 0 0.35
+      children [
+        InertialUnit {
+          name "imu"
+        }
+        Gyro {
+        }
+        Pose {
+          children [
+            Pose {
+              translation -0.066 -0.2 0.066
+              rotation 0 1 0 0.785398
+              children [
+                HingeJoint {
+                  jointParameters HingeJointParameters {
+                    position -0.33396010336286497
+                    axis 0 1 0
+                  }
+                  endPoint DEF PASSIVE_THIGH_SOLID Solid {
+                    translation 0.03151212850624872 -0.024999999999998208 -0.0912084693068644
+                    rotation -0.0031810638924138633 -0.9999922937350442 -0.002300717939615838 0.33270493911917853
+                    children [
+                      Pose {
+                        translation 0 -0.05 -0.0965
+                        rotation 0 1 0 -1.5707996938995747
+                        children [
+                          HingeJoint {
+                            jointParameters HingeJointParameters {
+                              position 0.3284510075589764
+                              axis 0 1 0
+                            }
+                            endPoint DEF CALF_SOLID Solid {
+                              translation -0.04193656894478778 -2.619576558032682e-06 -0.1230469716966395
+                              rotation -1.6959440458415083e-06 0.9999999999985337 2.372712174573516e-07 0.3284510075608321
+                              children [
+                                Pose {
+                                  translation 0 0 -0.12
+                                  children [
+                                    HingeJoint {
+                                      jointParameters HingeJointParameters {
+                                        axis 0 1 0
+                                      }
+                                      device [
+                                        RotationalMotor {
+                                          name "RW Motor"
+                                          maxVelocity 50
+                                          maxTorque 20
+                                        }
+                                      ]
+                                      endPoint Solid {
+                                        translation 0 0.05 0
+                                        rotation -1 0 0 1.5707996938995747
+                                        children [
+                                          DEF WHEEL_SHAPE Shape {
+                                            appearance PBRAppearance {
+                                              baseColor 0.333333 0.666667 1
+                                              metalness 0
+                                            }
+                                            geometry Cylinder {
+                                              height 0.05
+                                              radius 0.06
+                                            }
+                                          }
+                                        ]
+                                        boundingObject USE WHEEL_SHAPE
+                                        physics Physics {
+                                          mass 0.1
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                                DEF LINK_1_SHAPE Shape {
+                                  appearance PBRAppearance {
+                                    baseColor 1 0 0
+                                    metalness 0
+                                  }
+                                  geometry Box {
+                                    size 0.05 0.05 0.24
+                                  }
+                                }
+                              ]
+                              name "CALF_SOLID"
+                              boundingObject USE LINK_1_SHAPE
+                              physics Physics {
+                                mass 0.2
+                              }
+                            }
+                          }
+                        ]
+                      }
+                      DEF LINK_3_SHAPE Shape {
+                        appearance PBRAppearance {
+                        }
+                        geometry Box {
+                          size 0.05 0.05 0.193
+                        }
+                      }
+                    ]
+                    boundingObject USE LINK_3_SHAPE
+                    physics Physics {
+                      mass 0.1
+                    }
+                  }
+                }
+              ]
+            }
+            Pose {
+              translation -0.066 0.2 0.066
+              rotation 0 1 0 0.785398
+              children [
+                HingeJoint {
+                  jointParameters HingeJointParameters {
+                    position -0.33391726102427643
+                    axis 0 1 0
+                  }
+                  endPoint DEF PASSIVE_THIGH_SOLID Solid {
+                    translation 0.03150821515745271 0.02499999999999925 -0.09120980214017395
+                    rotation -0.0031815190694632896 -0.9999922917683512 -0.002300943348083374 0.33266209711129496
+                    children [
+                      Pose {
+                        translation 0 0.05 -0.0965
+                        rotation 0 1 0 -1.5707996938995747
+                        children [
+                          HingeJoint {
+                            jointParameters HingeJointParameters {
+                              position 0.32840964928573446
+                              axis 0 1 0
+                            }
+                            endPoint DEF CALF_SOLID_R Solid {
+                              translation -0.0419314798986503 -2.6195765580328964e-06 -0.12304870601549306
+                              rotation -1.62499536003768e-06 0.9999999999986539 2.273108734990873e-07 0.3284096492874086
+                              children [
+                                Pose {
+                                  translation 0 0 -0.12
+                                  children [
+                                    HingeJoint {
+                                      jointParameters HingeJointParameters {
+                                        axis 0 1 0
+                                      }
+                                      device [
+                                        RotationalMotor {
+                                          name "LW Motor"
+                                          maxVelocity 50
+                                          maxTorque 20
+                                        }
+                                      ]
+                                      endPoint Solid {
+                                        translation 0 -0.05 0
+                                        rotation -1 0 0 1.5707996938995747
+                                        children [
+                                          Shape {
+                                            appearance PBRAppearance {
+                                              baseColor 0.333333 0.666667 1
+                                              metalness 0
+                                            }
+                                            geometry Cylinder {
+                                              height 0.05
+                                              radius 0.06
+                                            }
+                                          }
+                                        ]
+                                        boundingObject USE WHEEL_SHAPE
+                                        physics Physics {
+                                          mass 0.1
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                                DEF LINK_1_SHAPE Shape {
+                                  appearance PBRAppearance {
+                                    baseColor 1 0 0
+                                    metalness 0
+                                  }
+                                  geometry Box {
+                                    size 0.05 0.05 0.24
+                                  }
+                                }
+                              ]
+                              name "CALF_SOLID_R"
+                              boundingObject USE LINK_1_SHAPE
+                              physics Physics {
+                                mass 0.2
+                              }
+                            }
+                          }
+                        ]
+                      }
+                      DEF LINK_3_SHAPE Shape {
+                        appearance PBRAppearance {
+                        }
+                        geometry Box {
+                          size 0.05 0.05 0.193
+                        }
+                      }
+                    ]
+                    name "solid(1)"
+                    boundingObject USE LINK_3_SHAPE
+                    physics Physics {
+                      mass 0.1
+                    }
+                  }
+                }
+              ]
+            }
+            Pose {
+              translation 0 -0.2 0
+              rotation 0 1 0 0.785398
+              children [
+                HingeJoint {
+                  jointParameters HingeJointParameters {
+                    position -0.35038444864704577
+                    axis 0 1 0
+                  }
+                  device [
+                    RotationalMotor {
+                      name "right_hip_motor"
+                    }
+                  ]
+                  endPoint DEF ACTIVE_THIGH_SOLID Solid {
+                    translation 0.030799522214654155 -0.024999999999999772 -0.08456046286202312
+                    rotation 0.0035907160319552907 -0.9999929986876708 -0.0010532492666359386 0.34927770116555945
+                    children [
+                      Pose {
+                        translation 0 0 -0.094
+                        children [
+                          HingeJoint {
+                            jointParameters HingeJointParameters {
+                              position 0.34487525602205504
+                              axis 0 1 0
+                            }
+                            endPoint SolidReference {
+                              solidName "CALF_SOLID"
+                            }
+                          }
+                        ]
+                      }
+                      DEF LINK_2_SHAPE Shape {
+                        appearance PBRAppearance {
+                          baseColor 0 1 0
+                          metalness 0
+                        }
+                        geometry Box {
+                          size 0.05 0.05 0.188
+                        }
+                      }
+                    ]
+                    name "active_hip_joint"
+                    boundingObject USE LINK_2_SHAPE
+                    physics Physics {
+                      mass 0.2
+                    }
+                  }
+                }
+              ]
+            }
+            Pose {
+              translation 0 0.2 0
+              rotation 0 1 0 0.785398
+              children [
+                HingeJoint {
+                  jointParameters HingeJointParameters {
+                    position -0.3503384678200563
+                    axis 0 1 0
+                  }
+                  device [
+                    RotationalMotor {
+                      name "left_hip_motor"
+                    }
+                  ]
+                  endPoint DEF ACTIVE_THIGH_SOLID_2 Solid {
+                    translation 0.03079561717725963 0.024999999999999096 -0.08456183292037096
+                    rotation 0.0035911597579692534 -0.9999929968627131 -0.0010534690893813747 0.3492317206605409
+                    children [
+                      Pose {
+                        translation 0 0 -0.094
+                        children [
+                          HingeJoint {
+                            jointParameters HingeJointParameters {
+                              position 0.34483052418738963
+                              axis 0 1 0
+                            }
+                            endPoint SolidReference {
+                              solidName "CALF_SOLID_R"
+                            }
+                          }
+                        ]
+                      }
+                      DEF LINK_2_SHAPE Shape {
+                        appearance PBRAppearance {
+                          baseColor 0 1 0
+                          metalness 0
+                        }
+                        geometry Box {
+                          size 0.05 0.05 0.188
+                        }
+                      }
+                    ]
+                    name "active_hip_joint(1)"
+                    boundingObject USE LINK_2_SHAPE
+                    physics Physics {
+                      mass 0.2
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        DEF CHASSIS_SHAPE Shape {
+          appearance PBRAppearance {
+            baseColor 1 1 0
+            metalness 0
+          }
+          geometry Box {
+            size 0.25 0.4 0.18
+          }
+        }
+      ]
+      name "CHASSIS_SOLID"
+      boundingObject USE CHASSIS_SHAPE
+      physics Physics {
+        mass 1.5
+      }
+    }
+  ]
+  name "WheeledBipedRobot"
+  physics Physics {
+  }
+  controller "my_controller"
+}
