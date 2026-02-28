@@ -45,3 +45,16 @@ lib/
 
 # Test
 test/
+
+# MATLAB
+*.asv
+*.m~
+*.mex*
+*.p
+slprj/
+codegen/
+matlab.prf
+
+# Webots
+*.wbproj
+*.wbo
