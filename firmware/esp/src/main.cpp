@@ -2,6 +2,8 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include "esp_teensy_comm.h"
+
 
 namespace
 {
@@ -112,10 +114,14 @@ void setup()
   startAccessPoint();
   setUpWebServer();
   server.begin();
+
+  esp_comm_init();
 }
 
 void loop()
 {
   server.handleClient();
   delay(10);
+
+  esp_comm_update();
 }
