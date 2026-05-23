@@ -44,33 +44,52 @@ public:
     void update() {
         if (!ok_) return;
 
-        auto raw_euler = read_vec3(bno::EULER_H_LSB);
-        yaw_   = raw_euler[0] / 900.0f;
-        roll_  = raw_euler[1] / 900.0f;
-        pitch_ = raw_euler[2] / 900.0f;
+        int16_t raw[9];
+        read_vec3(bno::EULER_H_LSB,        &raw[0]);
+        read_vec3(bno::GYRO_X_LSB,         &raw[3]);
+        read_vec3(bno::LINEAR_ACCEL_X_LSB, &raw[6]);
 
-        auto raw_gyro = read_vec3(bno::GYRO_X_LSB);
-        gyro_x_ = raw_gyro[0] / 900.0f;
-        gyro_y_ = raw_gyro[1] / 900.0f;
-        gyro_z_ = raw_gyro[2] / 900.0f;
+        bool changed = false;
+        for (int i = 0; i < 9; i++) {
+            if (raw[i] != prev_raw_[i]) changed = true;
+            prev_raw_[i] = raw[i];
+        }
 
-        auto raw_accel = read_vec3(bno::LINEAR_ACCEL_X_LSB);
-        lin_accel_x_ = raw_accel[0] / 100.0f;
-        lin_accel_y_ = raw_accel[1] / 100.0f;
-        lin_accel_z_ = raw_accel[2] / 100.0f;
+        // BNO055 SI scaling: 1 LSB = 1/900 rad (euler), 1/900 rad/s (gyro), 1/100 m/s^2 (linear accel)
+        yaw_   = raw[0] / 900.0f;
+        roll_  = raw[1] / 900.0f;
+        pitch_ = raw[2] / 900.0f;
+        gyro_x_ = raw[3] / 900.0f;
+        gyro_y_ = raw[4] / 900.0f;
+        gyro_z_ = raw[5] / 900.0f;
+        lin_accel_x_ = raw[6] / 100.0f;
+        lin_accel_y_ = raw[7] / 100.0f;
+        lin_accel_z_ = raw[8] / 100.0f;
+
+        uint32_t now = millis();
+        last_update_ms_ = now;
+        if (changed || !had_first_) last_change_ms_ = now;
+        had_first_ = true;
     }
 
     float pitch()      const { return pitch_; }
     float roll()       const { return roll_; }
     float yaw()        const { return yaw_; }
-    float pitch_rate() const { return gyro_y_; }
-    float roll_rate()  const { return gyro_x_; }
+
+    // Depends on IMU mounting in chassis body frame
+    float pitch_rate() const { return gyro_x_; }
+    float roll_rate()  const { return gyro_y_; }
     float yaw_rate()   const { return gyro_z_; }
+
     float accel_x()    const { return lin_accel_x_; }
     float accel_y()    const { return lin_accel_y_; }
     float accel_z()    const { return lin_accel_z_; }
 
     bool ok() const { return ok_; }
+
+    uint32_t ms_since_update() const { return millis() - last_update_ms_; }
+    uint32_t ms_since_change() const { return millis() - last_change_ms_; }
+    bool     is_stale() const { return ms_since_change() > cfg::imu_stale_ms; }
 
 private:
     TwoWire* wire_ = nullptr;
@@ -79,6 +98,11 @@ private:
     float pitch_ = 0, roll_ = 0, yaw_ = 0;
     float gyro_x_ = 0, gyro_y_ = 0, gyro_z_ = 0;
     float lin_accel_x_ = 0, lin_accel_y_ = 0, lin_accel_z_ = 0;
+
+    int16_t prev_raw_[9] = {0};
+    uint32_t last_update_ms_ = 0;
+    uint32_t last_change_ms_ = 0;
+    bool     had_first_ = false;
 
     void write8(uint8_t reg, uint8_t val) {
         wire_->beginTransmission(bno::DEFAULT_ADDR);
@@ -95,8 +119,7 @@ private:
         return wire_->read();
     }
 
-    int16_t* read_vec3(uint8_t reg) {
-        static int16_t vals[3];
+    void read_vec3(uint8_t reg, int16_t out[3]) {
         wire_->beginTransmission(bno::DEFAULT_ADDR);
         wire_->write(reg);
         wire_->endTransmission(false);
@@ -104,8 +127,7 @@ private:
         for (int i = 0; i < 3; i++) {
             uint8_t lo = wire_->read();
             uint8_t hi = wire_->read();
-            vals[i] = static_cast<int16_t>((hi << 8) | lo);
+            out[i] = static_cast<int16_t>((hi << 8) | lo);
         }
-        return vals;
     }
 };

@@ -64,7 +64,7 @@ euler_readout = ax_euler.text(0.99, 0.95, "", transform=ax_euler.transAxes,
 
 # Gyroscope
 ax_gyro.set_title("Gyroscope", fontsize=11, fontweight="bold", loc="left")
-ax_gyro.set_ylabel("rad/s")
+ax_gyro.set_ylabel("deg/s")
 ln_gp, = ax_gyro.plot([], [], label="Pitch rate", color=COLORS["r"], linewidth=1.2)
 ln_gr, = ax_gyro.plot([], [], label="Roll rate",  color=COLORS["g"], linewidth=1.2)
 ln_gy, = ax_gyro.plot([], [], label="Yaw rate",   color=COLORS["b"], linewidth=1.2)
@@ -213,11 +213,14 @@ def update(frame):
     autoscale(ax_euler, pitch, roll, yaw)
     euler_readout.set_text(f"P:{pitch[-1]:+6.1f}  R:{roll[-1]:+6.1f}  Y:{yaw[-1]:+6.1f}")
 
-    ln_gp.set_data(x, list(gp))
-    ln_gr.set_data(x, list(gr))
-    ln_gy.set_data(x, list(gy))
-    autoscale(ax_gyro, gp, gr, gy)
-    gyro_readout.set_text(f"P:{gp[-1]:+5.2f}  R:{gr[-1]:+5.2f}  Y:{gy[-1]:+5.2f}")
+    gp_deg = [v * 57.2958 for v in gp]
+    gr_deg = [v * 57.2958 for v in gr]
+    gy_deg = [v * 57.2958 for v in gy]
+    ln_gp.set_data(x, gp_deg)
+    ln_gr.set_data(x, gr_deg)
+    ln_gy.set_data(x, gy_deg)
+    autoscale(ax_gyro, gp_deg, gr_deg, gy_deg)
+    gyro_readout.set_text(f"P:{gp_deg[-1]:+6.1f}  R:{gr_deg[-1]:+6.1f}  Y:{gy_deg[-1]:+6.1f}")
 
     ln_ax.set_data(x, list(ax))
     ln_ay.set_data(x, list(ay))
