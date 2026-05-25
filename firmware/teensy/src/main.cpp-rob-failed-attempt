@@ -1,0 +1,108 @@
+#include <Arduino.h>
+#include <FlexCAN_T4.h>
+#include "RobStrideMIT.h"
+
+// Minimal MIT-mode demo — port of tianrking/RobStride_Control cpp/ to Teensy.
+// Holds the motor at position 0 with kp=30, kd=0.5 at 200 Hz.
+// Adjust MOTOR_ID and MitScaling for your motor (RS-03 defaults shown).
+
+static constexpr uint8_t MOTOR_ID = 55;
+static constexpr uint8_t HOST_ID  = 0xFD;
+
+FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
+robstride::RobStrideMIT<CAN1, RX_SIZE_256, TX_SIZE_16> motor(can1, MOTOR_ID, HOST_ID);
+
+// Sweep ids 0..127 with comm-type-0 (GET_DEVICE_ID). Motors reply with
+// comm_type=0, target=0xFE, and their actual id in data_area's low byte.
+void scan_for_motors(uint32_t per_id_wait_ms = 8) {
+  Serial.println("[SCAN] sweeping motor IDs 0..127");
+  uint8_t found = 0;
+  for (uint8_t id = 0; id <= 127; id++) {
+    CAN_message_t tx;
+    tx.id = ((uint32_t)robstride::CommType::GET_DEVICE_ID << 24) |
+            ((uint32_t)HOST_ID << 8) | id;
+    tx.flags.extended = 1;
+    tx.len = 8;
+    memset(tx.buf, 0, 8);
+    can1.write(tx);
+
+    const uint32_t deadline = millis() + per_id_wait_ms;
+    while ((int32_t)(millis() - deadline) < 0) {
+      CAN_message_t rx;
+      while (can1.read(rx)) {
+        if (!rx.flags.extended) continue;
+        const uint8_t  comm_type = (rx.id >> 24) & 0x1F;
+        const uint16_t data_area = (rx.id >> 8) & 0xFFFF;
+        const uint8_t  target    = rx.id & 0xFF;
+        Serial.print("[CAN RX] id=0x"); Serial.print(rx.id, HEX);
+        Serial.print(" type=0x");       Serial.print(comm_type, HEX);
+        Serial.print(" data_area=0x");  Serial.print(data_area, HEX);
+        Serial.print(" target=0x");     Serial.print(target, HEX);
+        if (comm_type == robstride::CommType::GET_DEVICE_ID && target == 0xFE) {
+          Serial.print("  <-- FOUND motor id=");
+          Serial.print(data_area & 0xFF);
+          found++;
+        }
+        Serial.println();
+      }
+    }
+  }
+  Serial.print("[SCAN] done, motors_found=");
+  Serial.println(found);
+}
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial && millis() < 3000) {}
+
+  Serial.println();
+  Serial.print("[BOOT] RobStride MIT demo, motor_id=");
+  Serial.println(MOTOR_ID);
+
+  can1.begin();
+  can1.setBaudRate(1000000);
+  Serial.println("[CAN] CAN1 up @ 1 Mbps");
+
+  delay(200);
+
+  scan_for_motors();
+
+  Serial.println("[MOTOR] enable");
+  motor.enable();
+  delay(100);
+
+  Serial.println("[MOTOR] set MIT mode");
+  motor.set_mode(robstride::ControlMode::MIT);
+  delay(20);
+
+  motor.write_param_float(robstride::ParamID::VELOCITY_LIMIT, 20.0f);
+  motor.write_param_float(robstride::ParamID::TORQUE_LIMIT,   20.0f);
+  delay(20);
+
+  Serial.println("[MOTOR] commanding pos=0, kp=30, kd=0.5");
+}
+
+void loop() {
+  static uint32_t last_tx_us = 0;
+  static uint32_t last_log_ms = 0;
+  const uint32_t period_us = 5000;  // 200 Hz
+
+  if (micros() - last_tx_us >= period_us) {
+    last_tx_us += period_us;
+    motor.write_operation(/*pos*/ 122.0f, /*vel*/ 0.0f, /*kp*/ 30.0f, /*kd*/ 0.5f);
+  }
+
+  motor.poll_rx();
+
+  if (millis() - last_log_ms >= 500) {
+    last_log_ms = millis();
+    const auto& s = motor.state();
+    Serial.print("[STATE] pos=");   Serial.print(s.position, 3);
+    Serial.print(" vel=");          Serial.print(s.velocity, 3);
+    Serial.print(" tq=");           Serial.print(s.torque, 3);
+    Serial.print(" temp=");         Serial.print(s.temperature, 1);
+    Serial.print(" mode=");         Serial.print(s.mode_status);
+    Serial.print(" fault=0x");      Serial.print(s.fault_bits, HEX);
+    Serial.print(" age_ms=");       Serial.println(millis() - s.last_rx_ms);
+  }
+}

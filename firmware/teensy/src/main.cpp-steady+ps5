@@ -1,0 +1,183 @@
+#include <Arduino.h>
+#include <FlexCAN_T4.h>
+
+FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
+
+// =============================
+// ODrive Command IDs
+// =============================
+#define CMD_SET_AXIS_STATE      0x07
+#define CMD_SET_CONTROLLER_MODE 0x0B
+#define CMD_SET_INPUT_TORQUE    0x0E
+
+#define AXIS_STATE_CLOSED_LOOP  8
+#define CONTROL_MODE_TORQUE     1
+#define INPUT_MODE_PASSTHROUGH  1
+
+#define NODE_LEFT   1
+#define NODE_RIGHT  2
+
+// =============================
+// UART Packet Definition
+// =============================
+struct __attribute__((packed)) ControlPacket {
+  uint8_t start1;
+  uint8_t start2;
+  float left_torque;
+  float right_torque;
+  uint8_t mode;
+  uint8_t checksum;
+};
+
+ControlPacket current_cmd = {0};
+uint32_t last_packet_time = 0;
+const uint32_t COMMAND_TIMEOUT_MS = 100; // safety timeout
+
+// =============================
+uint16_t make_can_id(uint8_t node, uint8_t cmd) {
+  return (node << 5) | cmd;
+}
+
+void send_torque(uint8_t node, float torque) {
+  CAN_message_t msg;
+  msg.id = make_can_id(node, CMD_SET_INPUT_TORQUE);
+  msg.len = 8;
+  memset(msg.buf, 0, 8);
+  memcpy(msg.buf, &torque, 4);
+  can1.write(msg);
+}
+
+void set_axis_state(uint8_t node, uint32_t state) {
+  CAN_message_t msg;
+  msg.id = make_can_id(node, CMD_SET_AXIS_STATE);
+  msg.len = 8;
+  memset(msg.buf, 0, 8);
+  memcpy(msg.buf, &state, 4);
+  can1.write(msg);
+}
+
+void set_controller_mode(uint8_t node) {
+  CAN_message_t msg;
+  msg.id = make_can_id(node, CMD_SET_CONTROLLER_MODE);
+  msg.len = 8;
+
+  uint32_t control_mode = CONTROL_MODE_TORQUE;
+  uint32_t input_mode   = INPUT_MODE_PASSTHROUGH;
+
+  memcpy(msg.buf, &control_mode, 4);
+  memcpy(msg.buf + 4, &input_mode, 4);
+  can1.write(msg);
+}
+
+uint8_t computeChecksum(ControlPacket &pkt) {
+  uint8_t sum = 0;
+
+  sum ^= pkt.start1;
+  sum ^= pkt.start2;
+
+  uint8_t *lt = (uint8_t*)&pkt.left_torque;
+  uint8_t *rt = (uint8_t*)&pkt.right_torque;
+
+  for (int i = 0; i < 4; i++) sum ^= lt[i];
+  for (int i = 0; i < 4; i++) sum ^= rt[i];
+
+  sum ^= pkt.mode;
+
+  return sum;
+}
+
+// =============================
+void setup() {
+
+  Serial.begin(115200);   // USB debug
+  Serial1.begin(115200);  // UART from ESP
+
+  can1.begin();
+  can1.setBaudRate(500000);
+
+  delay(1000);
+
+  set_axis_state(NODE_LEFT,  AXIS_STATE_CLOSED_LOOP);
+  set_axis_state(NODE_RIGHT, AXIS_STATE_CLOSED_LOOP);
+
+  delay(100);
+
+  set_controller_mode(NODE_LEFT);
+  set_controller_mode(NODE_RIGHT);
+}
+
+// =============================
+void loop() {
+
+  // -------------------------
+  // UART Receive Layer
+  // -------------------------
+
+  static uint8_t buffer[sizeof(ControlPacket)];
+  static uint8_t index = 0;
+
+  while (Serial1.available()) {
+
+    uint8_t byte = Serial1.read();
+
+    // Waiting for first header byte
+    if (index == 0) {
+      if (byte == 0xAA) {
+        buffer[index++] = byte;
+      }
+    }
+
+    // Waiting for second header byte
+    else if (index == 1) {
+      if (byte == 0x55) {
+        buffer[index++] = byte;
+      } else {
+        index = 0; // restart sync
+      }
+    }
+
+    // Collect remaining bytes
+    else {
+      buffer[index++] = byte;
+
+      if (index == sizeof(ControlPacket)) {
+
+        ControlPacket pkt;
+        memcpy(&pkt, buffer, sizeof(ControlPacket));
+
+        if (computeChecksum(pkt) == pkt.checksum) {
+          current_cmd = pkt;
+          last_packet_time = millis();
+          // Serial.println("VALID");  // optional debug
+        }
+
+        index = 0; // reset for next packet
+      }
+    }
+  }
+
+  
+
+  // -------------------------
+  // 500 Hz Control Loop
+  // -------------------------
+  static uint32_t last_tick = 0;
+  const uint32_t period_us = 2000;
+
+  if (micros() - last_tick >= period_us) {
+
+    last_tick += period_us;
+
+    float left  = 0.0f;
+    float right = 0.0f;
+
+    // Safety timeout
+    if (millis() - last_packet_time < COMMAND_TIMEOUT_MS) {
+      left  = current_cmd.left_torque;
+      right = current_cmd.right_torque;
+    }
+
+    send_torque(NODE_LEFT,  left);
+    send_torque(NODE_RIGHT, right);
+  }
+}
