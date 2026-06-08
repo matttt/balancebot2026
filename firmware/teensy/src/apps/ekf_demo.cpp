@@ -16,9 +16,11 @@
 #include "imu.h"
 #include "ekf.h"
 #include "sensors.h"
+#include "telemetry.h"
 
 Imu imu;
 BipedEKF ekf;
+Telemetry tel;
 
 sensors::ImuPreprocessor imu_pre;
 sensors::EncoderPreprocessor enc_L;
@@ -48,14 +50,6 @@ bool fault_imu   = false;
 bool fault_wheel = false;
 bool fault_div   = false;
 bool fault_stall = false;
-
-uint8_t read_calib_status() {
-    Wire.beginTransmission(cfg::bno055_addr);
-    Wire.write(0x35);
-    Wire.endTransmission(false);
-    Wire.requestFrom(cfg::bno055_addr, uint8_t(1));
-    return Wire.read();
-}
 
 void setup() {
     Serial.begin(115200);
@@ -187,24 +181,36 @@ void loop() {
 
     if (tick % 2 != 0) return;
 
-    uint8_t cal = read_calib_status();
-    float raw_pitch = (imu.pitch() - pitch_zero) * 57.2958f;
-    float ekf_pitch = (est.pitch  - pitch_zero) * 57.2958f;
+    uint8_t cal = imu.calib_status();
+    const float RAD2DEG = 57.2958f;
 
-    Serial.printf("D,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,"
-                  "%.5f,%.4f,%d,%d,%d,%d,%d,%d,%d,"
-                  "%d,%d,%d,%d,%u,%.2f,%.2f\n",
-                  raw_pitch, ekf_pitch,
-                  imu.pitch_rate(), est.pitch_rate,
-                  imu.yaw_rate(),   est.yaw_rate,
-                  wpos_mean,        est.wheel_pos,
-                  wvel_mean,        est.wheel_vel,
-                  est.x_pos,        est.x_vel,
-                  ekf.pitch_variance(), ekf.pitch_kalman_gain(),
-                  accepted ? 1 : 0,
-                  fault_imu ? 1 : 0, fault_wheel ? 1 : 0,
-                  (cal >> 6) & 3, (cal >> 4) & 3, (cal >> 2) & 3, cal & 3,
-                  imu_stale ? 1 : 0, wheel_diverged ? 1 : 0,
-                  xval_bad ? 1 : 0, fallen ? 1 : 0,
-                  (unsigned)imu_fault_mask, pi.accel_x, wheel_accel_x);
+    tel.put("pitch.raw", (imu.pitch() - pitch_zero) * RAD2DEG);
+    tel.put("pitch.ekf", (est.pitch  - pitch_zero) * RAD2DEG);
+    tel.put("pitch_rate.raw", imu.pitch_rate() * RAD2DEG);
+    tel.put("pitch_rate.ekf", est.pitch_rate   * RAD2DEG);
+    tel.put("yaw_rate.raw", imu.yaw_rate());
+    tel.put("yaw_rate.ekf", est.yaw_rate);
+    tel.put("wheel_pos.sim", wpos_mean);
+    tel.put("wheel_pos.ekf", est.wheel_pos);
+    tel.put("wheel_vel.sim", wvel_mean);
+    tel.put("wheel_vel.ekf", est.wheel_vel);
+    tel.put("x_pos", est.x_pos);
+    tel.put("x_vel", est.x_vel);
+    tel.put("ekf.pitch_var", ekf.pitch_variance());
+    tel.put("ekf.kalman_gain", ekf.pitch_kalman_gain());
+    tel.put("accel.imu",   pi.accel_x);
+    tel.put("accel.wheel", wheel_accel_x);
+    tel.put("flag.accepted",  accepted ? 1 : 0);
+    tel.put("flag.fault_imu",   fault_imu ? 1 : 0);
+    tel.put("flag.fault_wheel", fault_wheel ? 1 : 0);
+    tel.put("flag.imu_stale",   imu_stale ? 1 : 0);
+    tel.put("flag.diverged",    wheel_diverged ? 1 : 0);
+    tel.put("flag.xval_bad",    xval_bad ? 1 : 0);
+    tel.put("flag.fallen",      fallen ? 1 : 0);
+    tel.put("flag.imu_mask",    imu_fault_mask);
+    tel.put("cal.sys",   (cal >> 6) & 3);
+    tel.put("cal.gyro",  (cal >> 4) & 3);
+    tel.put("cal.accel", (cal >> 2) & 3);
+    tel.put("cal.mag",    cal       & 3);
+    tel.send();
 }

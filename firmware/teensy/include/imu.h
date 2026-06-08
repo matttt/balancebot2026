@@ -91,6 +91,9 @@ public:
     uint32_t ms_since_change() const { return millis() - last_change_ms_; }
     bool     is_stale() const { return ms_since_change() > cfg::imu_stale_ms; }
 
+    // Raw BNO055 calibration status byte: bits [7:6]=sys [5:4]=gyro [3:2]=accel [1:0]=mag
+    uint8_t calib_status() { return read8(bno::CALIB_STAT_ADDR); }
+
 private:
     TwoWire* wire_ = nullptr;
     bool ok_ = false;

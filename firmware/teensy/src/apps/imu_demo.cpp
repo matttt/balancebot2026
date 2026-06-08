@@ -1,17 +1,11 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "imu.h"
+#include "telemetry.h"
 
 Imu imu;
+Telemetry tel;
 float pitch_zero = 0, roll_zero = 0, yaw_zero = 0;
-
-uint8_t read_calib_status() {
-    Wire.beginTransmission(cfg::bno055_addr);
-    Wire.write(0x35);
-    Wire.endTransmission(false);
-    Wire.requestFrom(cfg::bno055_addr, uint8_t(1));
-    return Wire.read();
-}
 
 void setup() {
     Serial.begin(115200);
@@ -66,15 +60,22 @@ void loop() {
     last_ms = now;
 
     imu.update();
-    uint8_t cal = read_calib_status();
+    uint8_t cal = imu.calib_status();
 
-    float p = (imu.pitch() - pitch_zero) * 57.2958f;
-    float r = (imu.roll()  - roll_zero)  * 57.2958f;
-    float y = (imu.yaw()   - yaw_zero)   * 57.2958f;
+    const float RAD2DEG = 57.2958f;
 
-    Serial.printf("D,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%d,%d,%d,%d\n",
-        p, r, y,
-        imu.pitch_rate(), imu.roll_rate(), imu.yaw_rate(),
-        imu.accel_x(), imu.accel_y(), imu.accel_z(),
-        (cal >> 6) & 3, (cal >> 4) & 3, (cal >> 2) & 3, cal & 3);
+    tel.put("euler.pitch", (imu.pitch() - pitch_zero) * RAD2DEG);
+    tel.put("euler.roll",  (imu.roll()  - roll_zero)  * RAD2DEG);
+    tel.put("euler.yaw",   (imu.yaw()   - yaw_zero)   * RAD2DEG);
+    tel.put("gyro.pitch", imu.pitch_rate() * RAD2DEG);
+    tel.put("gyro.roll",  imu.roll_rate()  * RAD2DEG);
+    tel.put("gyro.yaw",   imu.yaw_rate()   * RAD2DEG);
+    tel.put("accel.x", imu.accel_x());
+    tel.put("accel.y", imu.accel_y());
+    tel.put("accel.z", imu.accel_z());
+    tel.put("cal.sys",   (cal >> 6) & 3);
+    tel.put("cal.gyro",  (cal >> 4) & 3);
+    tel.put("cal.accel", (cal >> 2) & 3);
+    tel.put("cal.mag",    cal       & 3);
+    tel.send();
 }
