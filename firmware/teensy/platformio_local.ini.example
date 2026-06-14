@@ -1,0 +1,13 @@
+; Per-developer hardware overrides.
+;
+; Copy this file to `platformio_local.ini` (git-ignored) and edit it for YOUR
+; setup. PlatformIO merges it over platformio.ini, so these values win.
+
+[env]
+board = teensy41        ; set to teensy40 if that's your board
+
+; Ports auto-detect by default, which survives the Teensy re-enumerating to a
+; new COM number after each flash. Teensy upload uses USB-HID (Teensy Loader),
+; so upload_port is not needed. Only pin monitor_port if auto-detect picks the
+; wrong device (e.g. you have several serial adapters plugged in):
+; monitor_port = COM5
